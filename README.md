@@ -1,5 +1,5 @@
 # AWS ECR Image Scanner
-[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens) ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/sam0392in/github.com/sam0392in/aws-ecr-image-scanner?include_prereleases)
+[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sam0392in/kshow)](https://goreportcard.com/report/github.com/sam0392in/kshow)
 
 
