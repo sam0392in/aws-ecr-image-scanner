@@ -1,4 +1,4 @@
-module aws-ecr-image-scanner
+module github.com/sam0392in/aws-ecr-image-scanner
 
 go 1.19
 
