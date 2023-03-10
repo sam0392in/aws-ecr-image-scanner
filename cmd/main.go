@@ -22,7 +22,7 @@ import (
 )
 
 var (
-  app = kingpin.New("github.com/sam0392in/aws-ecr-image-scanner", "CLI for seeing the details of vulnerabilities in ECR image.")
+  app = kingpin.New("aws-ecr-image-scanner", "CLI for seeing the details of vulnerabilities in ECR image.")
 
   scan          = app.Command("scan", "")
   awsRegion     = scan.Flag("region", "Enter AWS Region").Required().String()
