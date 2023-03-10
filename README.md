@@ -20,7 +20,7 @@ mv aws-ecr-image-scanner-darwin /usr/local/bin/aws-ecr-image-scanner
 
 ## Usage
 ```shell
-github.com/sam0392in/aws-ecr-image-scanner scan --region eu-west-1 --repo < ECR REPOSITORY NAME > --tag < IMAGE TAG > --severity < SEVERITY >
+aws-ecr-image-scanner scan --region eu-west-1 --repo < ECR REPOSITORY NAME > --tag < IMAGE TAG > --severity < SEVERITY >
 ```
 
 ### Arguments
