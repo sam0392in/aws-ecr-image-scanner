@@ -10,6 +10,14 @@
 ## Prerequisites
 - ECR Scan is enabled in your AWS Account
 
+## Download Binary (Example for MAC Supported System)
+```
+wget https://github.com/sam0392in/aws-ecr-image-scanner/releases/download/v0.1/aws-ecr-image-scanner-darwin && \
+chmod 755 aws-ecr-image-scanner-darwin && \
+mv aws-ecr-image-scanner-darwin /usr/local/bin/aws-ecr-image-scanner
+
+```
+
 ## Usage
 ```shell
 github.com/sam0392in/aws-ecr-image-scanner scan --region eu-west-1 --repo < ECR REPOSITORY NAME > --tag < IMAGE TAG > --severity < SEVERITY >
