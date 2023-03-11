@@ -14,31 +14,31 @@ limitations under the License.
 package main
 
 import (
-  "os"
-  "strings"
+	"os"
+	"strings"
 
-  "github.com/alecthomas/kingpin/v2"
-  "github.com/sam0392in/aws-ecr-image-scanner/internal/scanner"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/sam0392in/aws-ecr-image-scanner/internal/scanner"
 )
 
 var (
-  app = kingpin.New("aws-ecr-image-scanner", "CLI for seeing the details of vulnerabilities in ECR image.")
+	app = kingpin.New("aws-ecr-image-scanner", "CLI for seeing the details of vulnerabilities in ECR image.")
 
-  scan          = app.Command("scan", "")
-  awsRegion     = scan.Flag("region", "Enter AWS Region").Required().String()
-  repo          = scan.Flag("repo", "Enter Repository Name").Required().String()
-  imageTag      = scan.Flag("tag", "Enter Image Tag").Required().String()
-  inputSeverity = scan.Flag("severity", "comma separated multiple choice, options: critical/high/medium/low/informational/all").Required().String()
+	scan          = app.Command("scan", "")
+	awsRegion     = scan.Flag("region", "Enter AWS Region").Required().String()
+	repo          = scan.Flag("repo", "Enter Repository Name").Required().String()
+	imageTag      = scan.Flag("tag", "Enter Image Tag").Required().String()
+	inputSeverity = scan.Flag("severity", "comma separated multiple choice, options: critical/high/medium/low/informational/all").Required().String()
 )
 
 func main() {
-  switch kingpin.MustParse(app.Parse(os.Args[1:])) {
-  case scan.FullCommand():
-    var data scanner.ScanDetails
-    data.ImageTag = *imageTag
-    data.Repo = *repo
-    data.AwsRegion = *awsRegion
-    data.InputSeverity = strings.Split(*inputSeverity, ",")
-    data.ScanImage()
-  }
+	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	case scan.FullCommand():
+		var data scanner.ScanDetails
+		data.ImageTag = *imageTag
+		data.Repo = *repo
+		data.AwsRegion = *awsRegion
+		data.InputSeverity = strings.Split(*inputSeverity, ",")
+		data.ScanImage()
+	}
 }
