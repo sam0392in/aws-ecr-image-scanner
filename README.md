@@ -10,27 +10,54 @@
 ## Prerequisites
 - ECR Scan is enabled in your AWS Account
 
-## Download Binary (Example for MAC Supported System)
+## Download Binary 
+- Go to github releases https://github.com/sam0392in/aws-ecr-image-scanner/releases
+- Download the binary from latest release.
+
+OR
+
+### For MAC OS
 ```
-wget https://github.com/sam0392in/aws-ecr-image-scanner/releases/download/v0.1/aws-ecr-image-scanner-darwin && \
+wget https://github.com/sam0392in/aws-ecr-image-scanner/releases/download/<LATEST TAG>/aws-ecr-image-scanner-darwin && \
 chmod 755 aws-ecr-image-scanner-darwin && \
 mv aws-ecr-image-scanner-darwin /usr/local/bin/aws-ecr-image-scanner
 
 ```
 
-## Usage
+### For Linux OS
 ```shell
-aws-ecr-image-scanner scan --region eu-west-1 --repo < ECR REPOSITORY NAME > --tag < IMAGE TAG > --severity < SEVERITY >
+wget https://github.com/sam0392in/aws-ecr-image-scanner/releases/download/<LATEST TAG>/aws-ecr-image-scanner-linux && \
+chmod 755 aws-ecr-image-scanner-linux && \
+mv aws-ecr-image-scanner-linux /usr/local/bin/aws-ecr-image-scanner
 ```
 
-### Arguments
-- --region:  Enter AWS Region
-- --repo:     Enter Repository Name
-- --tag:      Enter Image Tag
-- --severity: Comma separated multiple choice, options: critical/high/medium/low/informational/all
+## Usage
+```shell
+aws-ecr-image-scanner scan --repo < ECR REPOSITORY NAME > --tag < IMAGE TAG > --severity < SEVERITY > 
+```
+
+### Example:
+```
+aws-ecr-image-scanner scan --repo sample-test --tag latest --severity critical,high,medium
+```
+
+### Flags
+```shell
+--help:      Show context-sensitive help.
+--repo:      Repository Name
+--tag:       Image Tag
+--severity:  comma separated multiple choice, options: critical/high/medium/low/informational/all
+--max-retry: [OPTIONAL] [DEFAULT: 5] Define max retry attempts to get ecr scan status, Used for increasing delay timeout. 1 retry =~ 5 seconds. first retry starts from 2 
+
+```
+
 
 ### Output
 ```shell
+
+STATUS: waiting to get scan status...
+
+STATUS: ECR Image Scan Completed ..!!!
 
 │────────────────│──────────│────────────────────────────────────────────────────────│──────────────│──────────────────│
 │ NAME           │ SEVERITY │ DESCRIPTION                                            │ PACKAGE NAME │ PACKAGE VERSION  │
@@ -42,3 +69,21 @@ aws-ecr-image-scanner scan --region eu-west-1 --repo < ECR REPOSITORY NAME > --t
 │                │          │ results in an operating system crash.                  │              │                  │
 │────────────────│──────────│────────────────────────────────────────────────────────│──────────────│──────────────────│
 ```
+### Error Outputs and Solutions
+1.
+```shell
+STATUS: waiting to get scan status...
+ERROR:  ResourceNotReady: exceeded wait attempts
+```
+#### Solution
+specify ```--max-retry``` in command and specify the value > 5
+
+2.
+```shell
+STATUS: waiting to get scan status...
+ERROR:  ResourceNotReady: exceeded wait attempts
+ERROR:  ImageNotFoundException: The image with imageId {imageDigest:'null', imageTag:'1.1'} does not exist within the repository with name 'sample-test' in the registry with id '12143546'
+```
+
+#### Solution
+Enter correct Image Tag or Repo name

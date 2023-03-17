@@ -14,11 +14,15 @@ limitations under the License.
 package scanner
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/lensesio/tableprinter"
@@ -29,8 +33,9 @@ var (
 )
 
 type ScanDetails struct {
-	AwsRegion, Repo, ImageTag string
-	InputSeverity             []string
+	Repo, ImageTag string
+	InputSeverity  []string
+	MaxRetries     int
 }
 
 type scanOutput struct {
@@ -41,9 +46,37 @@ type scanOutput struct {
 	Package_version string `header:"package_version"`
 }
 
-func ecrClient(awsRegion string) *ecr.ECR {
-	mySession := session.Must(session.NewSession())
-	svc := ecr.New(mySession, aws.NewConfig().WithRegion(awsRegion))
+type Block struct {
+	Try     func()
+	Catch   func(Exception)
+	Finally func()
+}
+
+type Exception interface{}
+
+func throw(up Exception) {
+	panic(up)
+}
+
+func (tcf Block) Do() {
+	if tcf.Finally != nil {
+		defer tcf.Finally() // when finally is not nil then go to finally
+	}
+	if tcf.Catch != nil { // when catch is not nil then pass recover() to catch
+		defer func() {
+			if r := recover(); r != nil {
+				tcf.Catch(r)
+			}
+		}()
+	}
+	tcf.Try()
+}
+
+func ecrClient() *ecr.ECR {
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := ecr.New(mySession, aws.NewConfig())
 	return svc
 }
 
@@ -60,9 +93,18 @@ func contains(s []string, str string) bool {
 }
 
 func sortData(f *ecr.ImageScanFinding) scanOutput {
+	Block{
+		Try: func() {
+			out.Description = *f.Description
+		},
+		Catch: func(e Exception) {
+			out.Description = ""
+		},
+		Finally: func() {
+		},
+	}.Do()
 	out.Name = *f.Name
 	out.Severity = *f.Severity
-	out.Description = *f.Description
 	for _, a := range f.Attributes {
 		if *a.Key == "package_name" {
 			out.Package_name = *a.Value
@@ -82,18 +124,17 @@ func (d *ScanDetails) getOutput(page *ecr.DescribeImageScanFindingsOutput) []sca
 		findings []scanOutput
 	)
 	scanFindings := page.ImageScanFindings.Findings
-
 	for _, f := range scanFindings {
+		var data scanOutput
 		if d.InputSeverity[0] == "all" {
-			out = sortData(f)
+			data = sortData(f)
+		} else if contains(d.InputSeverity, *f.Severity) {
+			data = sortData(f)
 		} else {
-			if contains(d.InputSeverity, *f.Severity) {
-				out = sortData(f)
-			}
+			continue
 		}
-		if out.Name != "" {
-			findings = append(findings, out)
-		}
+
+		findings = append(findings, data)
 	}
 	if len(findings) == 0 {
 		return nil
@@ -119,11 +160,38 @@ func printOutput(vulnerabilities [][]scanOutput) {
 }
 
 /*
+start ECR Image Scan
+*/
+func (d *ScanDetails) StartScan() {
+	imageId := &ecr.ImageIdentifier{
+		ImageTag: &d.ImageTag,
+	}
+	scanParams := &ecr.StartImageScanInput{
+		ImageId:        imageId,
+		RepositoryName: &d.Repo,
+	}
+	client := ecrClient()
+	scanOut, err := client.StartImageScan(scanParams)
+	if err != nil {
+		fmt.Println(err)
+	}
+	status := *scanOut.ImageScanStatus.Status
+	scanInProgress, _ := regexp.MatchString("IN_PROGRESS", status)
+	if scanInProgress {
+		fmt.Println("Image scanning in progress...!!")
+		time.Sleep(30 * time.Second)
+	} else {
+		fmt.Println("Scan Status: ", *scanOut.ImageScanStatus.Status)
+	}
+
+}
+
+/*
 Returns Paginated output of DescribeImageScanFindingsOutput
 */
-func (d *ScanDetails) ScanImage() {
+func (d *ScanDetails) ScanImage() error {
 	var vulnerabilities [][]scanOutput
-	client := ecrClient(d.AwsRegion)
+	client := ecrClient()
 	imageId := &ecr.ImageIdentifier{
 		ImageTag: &d.ImageTag,
 	}
@@ -136,15 +204,20 @@ func (d *ScanDetails) ScanImage() {
 	/*
 	   Waiter: Waits till the image scan is completed
 	*/
-	err := client.WaitUntilImageScanComplete(params)
+	fmt.Println("\nSTATUS: waiting to get scan status...")
+	opts := request.WithWaiterMaxAttempts(d.MaxRetries)
+	//delayer := request.ConstantWaiterDelay(1 * time.Second)
+	//opts := request.WithWaiterDelay(delayer)
+	//err := client.WaitUntilImageScanComplete(params)
+	err := client.WaitUntilImageScanCompleteWithContext(context.TODO(), params, opts)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("ERROR: ", err)
 	} else {
-		fmt.Println("\nECR Image Scan Completed ..!!!\n")
+		fmt.Println("\nSTATUS: ECR Image Scan Completed ..!!!\n")
 	}
 
 	/*
-	   Waiter: Start populating scan findings
+	   Start populating scan findings
 	*/
 	pageNum := 0
 	err = client.DescribeImageScanFindingsPages(params,
@@ -157,7 +230,7 @@ func (d *ScanDetails) ScanImage() {
 			return pageNum <= pageNum
 		})
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	if len(vulnerabilities) == 0 {
@@ -165,4 +238,5 @@ func (d *ScanDetails) ScanImage() {
 	} else {
 		printOutput(vulnerabilities)
 	}
+	return nil
 }

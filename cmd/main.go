@@ -14,7 +14,9 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -25,10 +27,10 @@ var (
 	app = kingpin.New("aws-ecr-image-scanner", "CLI for seeing the details of vulnerabilities in ECR image.")
 
 	scan          = app.Command("scan", "")
-	awsRegion     = scan.Flag("region", "Enter AWS Region").Required().String()
 	repo          = scan.Flag("repo", "Enter Repository Name").Required().String()
 	imageTag      = scan.Flag("tag", "Enter Image Tag").Required().String()
 	inputSeverity = scan.Flag("severity", "comma separated multiple choice, options: critical/high/medium/low/informational/all").Required().String()
+	maxRetry      = scan.Flag("max-retry", "Define max retry attempt for waiter, Used for increasing delay timeout. 1 retry =~ 5 seconds. first retry starts from 2").Default("5").Int()
 )
 
 func main() {
@@ -37,8 +39,22 @@ func main() {
 		var data scanner.ScanDetails
 		data.ImageTag = *imageTag
 		data.Repo = *repo
-		data.AwsRegion = *awsRegion
 		data.InputSeverity = strings.Split(*inputSeverity, ",")
-		data.ScanImage()
+		data.MaxRetries = *maxRetry
+		err := data.ScanImage()
+		if err != nil {
+			scanNotFound, _ := regexp.MatchString("ScanNotFoundException:", err.Error())
+			if scanNotFound {
+				fmt.Println("Scan not enabled, starting scan now..!!")
+				data.StartScan()
+				err := data.ScanImage()
+				if err != nil {
+					fmt.Println("ERROR: ", err)
+				}
+			} else {
+				fmt.Println("ERROR: ", err.Error())
+			}
+
+		}
 	}
 }
