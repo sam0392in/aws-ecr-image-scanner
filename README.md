@@ -5,6 +5,7 @@
 
 
 - This binary shows the ecr image scan findings in a human readable format.
+- ECR Scan will be auto triggered post retry-timout if ```scan_on_push``` or ```continuous_scan``` is disabled in ecr repo.
 - This binary can be integrated with CI pipelines where post docker image creation, scanning can be done to see vulnerabilities.
 
 ## Prerequisites
