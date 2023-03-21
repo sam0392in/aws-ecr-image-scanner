@@ -73,8 +73,10 @@ func (tcf Block) Do() {
 }
 
 func ecrClient() *ecr.ECR {
+	awsProfile := os.Getenv("AWS_PROFILE")
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
+		Profile:           awsProfile,
 	}))
 	svc := ecr.New(mySession, aws.NewConfig())
 	return svc
