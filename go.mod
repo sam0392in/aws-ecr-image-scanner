@@ -6,7 +6,6 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.3.2
 	github.com/aws/aws-sdk-go v1.44.218
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
-	github.com/pkg/errors v0.9.1
 )
 
 require (

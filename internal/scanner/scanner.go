@@ -39,11 +39,11 @@ type ScanDetails struct {
 }
 
 type scanOutput struct {
-	Name            string `header:"name"`
-	Severity        string `header:"severity"`
-	Description     string `header:"description"`
-	Package_name    string `header:"package_name"`
-	Package_version string `header:"package_version"`
+	Name            string      `header:"name"`
+	Severity        string      `header:"severity"`
+	Description     interface{} `header:"description"`
+	Package_name    string      `header:"package_name"`
+	Package_version string      `header:"package_version"`
 }
 
 type Block struct {
@@ -118,6 +118,26 @@ func sortData(f *ecr.ImageScanFinding) scanOutput {
 	return out
 }
 
+func sortEnhancedData(f *ecr.EnhancedImageScanFinding) scanOutput {
+	Block{
+		Try: func() {
+			out.Description = *f.Description
+		},
+		Catch: func(e Exception) {
+			out.Description = ""
+		},
+		Finally: func() {
+		},
+	}.Do()
+	out.Name = *f.PackageVulnerabilityDetails.VulnerabilityId
+	out.Severity = *f.Severity
+	for _, a := range f.PackageVulnerabilityDetails.VulnerablePackages {
+		out.Package_name = *a.Name
+		out.Package_version = *a.Version
+	}
+	return out
+}
+
 /*
 sort the output depending upon input severity
 */
@@ -125,19 +145,35 @@ func (d *ScanDetails) getOutput(page *ecr.DescribeImageScanFindingsOutput) []sca
 	var (
 		findings []scanOutput
 	)
-	scanFindings := page.ImageScanFindings.Findings
-	for _, f := range scanFindings {
-		var data scanOutput
-		if d.InputSeverity[0] == "all" {
-			data = sortData(f)
-		} else if contains(d.InputSeverity, *f.Severity) {
-			data = sortData(f)
-		} else {
-			continue
-		}
 
-		findings = append(findings, data)
+	if len(page.ImageScanFindings.Findings) != 0 {
+		for _, f := range page.ImageScanFindings.Findings {
+			var data scanOutput
+			if d.InputSeverity[0] == "all" {
+				data = sortData(f)
+			} else if contains(d.InputSeverity, *f.Severity) {
+				data = sortData(f)
+			} else {
+				continue
+			}
+			findings = append(findings, data)
+		}
+	} else if (len(page.ImageScanFindings.Findings) == 0) && (len(page.ImageScanFindings.EnhancedFindings) != 0) {
+		for _, f := range page.ImageScanFindings.EnhancedFindings {
+			var data scanOutput
+			if d.InputSeverity[0] == "all" {
+				data = sortEnhancedData(f)
+			} else if contains(d.InputSeverity, *f.Severity) {
+				data = sortEnhancedData(f)
+			} else {
+				continue
+			}
+			findings = append(findings, data)
+		}
+	} else {
+		fmt.Println("INFO: No records returned from ECR in current page..!!")
 	}
+
 	if len(findings) == 0 {
 		return nil
 	} else {
@@ -213,7 +249,7 @@ func (d *ScanDetails) ScanImage() error {
 	//err := client.WaitUntilImageScanComplete(params)
 	err := client.WaitUntilImageScanCompleteWithContext(context.TODO(), params, opts)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
+		fmt.Println("INFO: ", err)
 	} else {
 		fmt.Println("\nSTATUS: ECR Image Scan Completed ..!!!\n")
 	}
