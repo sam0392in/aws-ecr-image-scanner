@@ -51,8 +51,9 @@ func run(cmd *cobra.Command) {
       err := data.ScanImage()
       if err != nil {
         fmt.Println("ERROR: ", err)
+        os.Exit(1)
       }
     }
-    os.Exit(1)
+    os.Exit(0)
   }
 }
